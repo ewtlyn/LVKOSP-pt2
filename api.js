@@ -5,10 +5,12 @@ class ApiClient {
     constructor() {
         this.token = localStorage.getItem('lvkosp_token');
         this.user = JSON.parse(localStorage.getItem('lvkosp_user') || 'null');
+        this.profile = JSON.parse(localStorage.getItem('lvkosp_profile') || 'null');
     }
 
     async request(endpoint, options = {}) {
         const url = API_BASE_URL + endpoint;
+        console.log(`📡 ${options.method || 'GET'} ${url}`);
         
         const headers = {
             'Content-Type': 'application/json',
@@ -17,52 +19,73 @@ class ApiClient {
 
         if (this.token) {
             headers['Authorization'] = `Bearer ${this.token}`;
+            console.log('Using token:', this.token.substring(0, 20) + '...');
         }
 
         try {
-            console.log(`📡 ${options.method || 'GET'} ${url}`);
             const response = await fetch(url, { ...options, headers });
+            console.log(`📡 Response: ${response.status} ${response.statusText}`);
             
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                throw new Error(error.error || `HTTP ${response.status}`);
+            // Try to get response as text first
+            const responseText = await response.text();
+            console.log('Response text:', responseText.substring(0, 200));
+            
+            let data;
+            try {
+                data = responseText ? JSON.parse(responseText) : {};
+            } catch (e) {
+                console.error('Failed to parse JSON:', responseText);
+                data = { error: 'Invalid JSON response', raw: responseText };
             }
             
-            return response.json();
+            if (!response.ok) {
+                const errorMsg = data.error || data.message || data.details || `HTTP ${response.status}`;
+                throw new Error(errorMsg);
+            }
+            
+            return data;
         } catch (error) {
             console.error('API Error:', error);
             throw error;
         }
     }
 
-    // Auth
+    // ========== AUTH ==========
     async register(email, password, username, full_name) {
+        console.log('Registering user:', { email, username });
+        
         const data = await this.request('/auth/register', {
             method: 'POST',
-            body: JSON.stringify({ email, password, username, full_name })
+            body: JSON.stringify({ 
+                email, 
+                password, 
+                username, 
+                full_name,
+                bio: '' 
+            })
         });
         
+        console.log('Register response:', data);
+        
         if (data.access_token) {
-            this.token = data.access_token;
-            this.user = data.user;
-            localStorage.setItem('lvkosp_token', this.token);
-            localStorage.setItem('lvkosp_user', JSON.stringify(this.user));
+            this.setAuthData(data.access_token, data.user, data.profile);
         }
         
         return data;
     }
 
     async login(email, password) {
+        console.log('Logging in:', email);
+        
         const data = await this.request('/auth/login', {
             method: 'POST',
             body: JSON.stringify({ email, password })
         });
         
+        console.log('Login response:', data);
+        
         if (data.access_token) {
-            this.token = data.access_token;
-            this.user = data.user;
-            localStorage.setItem('lvkosp_token', this.token);
-            localStorage.setItem('lvkosp_user', JSON.stringify(this.user));
+            this.setAuthData(data.access_token, data.user, data.profile);
         }
         
         return data;
@@ -70,17 +93,29 @@ class ApiClient {
 
     async getCurrentUser() {
         const data = await this.request('/auth/me');
-        this.user = data;
-        localStorage.setItem('lvkosp_user', JSON.stringify(data));
+        this.user = data.user || data;
+        this.profile = data.profile || data;
+        
+        localStorage.setItem('lvkosp_user', JSON.stringify(this.user));
+        localStorage.setItem('lvkosp_profile', JSON.stringify(this.profile));
+        
         return data;
     }
 
-    // Chats
+    async logout() {
+        try {
+            await this.request('/auth/logout', { method: 'POST' });
+        } finally {
+            this.clearAuthData();
+        }
+    }
+
+    // ========== CHATS ==========
     async getChats() {
         try {
             const data = await this.request('/chats');
-            console.log('Chats loaded:', data);
-            return Array.isArray(data) ? data : [];
+            console.log('Chats data:', data);
+            return Array.isArray(data) ? data : (data.chats || []);
         } catch (error) {
             console.error('Failed to load chats:', error);
             return [];
@@ -90,7 +125,7 @@ class ApiClient {
     async getMessages(chatId) {
         try {
             const data = await this.request(`/chats/${chatId}/messages?limit=50`);
-            return Array.isArray(data) ? data : [];
+            return Array.isArray(data) ? data : (data.messages || []);
         } catch (error) {
             console.error('Failed to load messages:', error);
             return [];
@@ -104,25 +139,44 @@ class ApiClient {
         });
     }
 
-    // Friends
-    async searchUsers(query) {
-        return this.request(`/users/search?q=${encodeURIComponent(query)}`);
+    // ========== UTILS ==========
+    setAuthData(token, user, profile) {
+        this.token = token;
+        this.user = user;
+        this.profile = profile;
+        
+        localStorage.setItem('lvkosp_token', token);
+        localStorage.setItem('lvkosp_user', JSON.stringify(user));
+        localStorage.setItem('lvkosp_profile', JSON.stringify(profile));
+        
+        console.log('Auth data saved');
     }
 
-    async getFriends() {
-        return this.request('/friends');
-    }
-
-    // Logout
-    logout() {
+    clearAuthData() {
         this.token = null;
         this.user = null;
+        this.profile = null;
+        
         localStorage.removeItem('lvkosp_token');
         localStorage.removeItem('lvkosp_user');
+        localStorage.removeItem('lvkosp_profile');
+        
+        console.log('Auth data cleared');
     }
 
     isAuthenticated() {
         return !!this.token;
+    }
+
+    // ========== DEBUG ==========
+    async checkHealth() {
+        try {
+            const response = await fetch(API_BASE_URL + '/health');
+            return response.ok;
+        } catch (error) {
+            console.error('Health check failed:', error);
+            return false;
+        }
     }
 }
 

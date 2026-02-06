@@ -1,29 +1,56 @@
-// auth.js - Authentication handling
+// auth.js - Simplified for debugging
+console.log('🔐 auth.js loaded');
+
 class AuthManager {
     constructor() {
+        console.log('🔐 AuthManager starting...');
         this.init();
     }
 
     async init() {
-        console.log('🔐 AuthManager starting...');
+        // Check API health first
+        console.log('🌐 Checking API health...');
+        const isHealthy = await api.checkHealth();
+        console.log('API healthy:', isHealthy);
+        
+        if (!isHealthy) {
+            this.showError('API сервер недоступен');
+            return;
+        }
         
         // Check if user is authenticated
         if (api.isAuthenticated()) {
+            console.log('✅ Token found, validating...');
             try {
-                console.log('🔄 Validating token...');
-                await api.getCurrentUser();
-                console.log('✅ User authenticated');
-                this.hideAuth();
+                const user = await api.getCurrentUser();
+                console.log('✅ User authenticated:', user);
                 this.showApp();
             } catch (error) {
-                console.error('❌ Invalid token:', error);
-                api.logout();
+                console.error('❌ Token invalid:', error);
+                api.clearAuthData();
                 this.showAuth();
             }
         } else {
             console.log('👤 No token found');
             this.showAuth();
         }
+    }
+
+    showError(message) {
+        const container = document.getElementById('auth-container');
+        container.innerHTML = `
+            <div class="auth-screen">
+                <div class="auth-card">
+                    <h2 class="auth-title">⚠️ Ошибка</h2>
+                    <p style="color: rgba(255,255,255,0.8); text-align: center; margin: 20px 0;">
+                        ${message}
+                    </p>
+                    <button onclick="location.reload()" class="auth-button">
+                        Перезагрузить
+                    </button>
+                </div>
+            </div>
+        `;
     }
 
     showAuth() {
@@ -39,9 +66,9 @@ class AuthManager {
                         <input type="email" class="auth-input" id="email" placeholder="Email" required>
                         <input type="password" class="auth-input" id="password" placeholder="Пароль" required>
                         
-                        <div id="registerFields" style="display: none; margin-top: 15px;">
-                            <input type="text" class="auth-input" id="username" placeholder="Имя пользователя" required>
-                            <input type="text" class="auth-input" id="full_name" placeholder="Полное имя (необязательно)">
+                        <div id="registerFields" style="display: none;">
+                            <input type="text" class="auth-input" id="username" placeholder="Имя пользователя">
+                            <input type="text" class="auth-input" id="full_name" placeholder="Полное имя">
                         </div>
                         
                         <button type="submit" class="auth-button" id="submitBtn">Войти</button>
@@ -53,6 +80,12 @@ class AuthManager {
                     </div>
                     
                     <div class="auth-message" id="authMessage"></div>
+                    
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <p style="color: rgba(255,255,255,0.5); font-size: 12px; text-align: center;">
+                            API: ${API_BASE_URL}
+                        </p>
+                    </div>
                 </div>
             </div>
         `;
@@ -69,6 +102,9 @@ class AuthManager {
         const registerFields = document.getElementById('registerFields');
         const submitBtn = document.getElementById('submitBtn');
         const messageEl = document.getElementById('authMessage');
+        
+        // Remove required attribute for debugging
+        document.getElementById('username')?.removeAttribute('required');
         
         // Switch between login/register
         switchLink.addEventListener('click', (e) => {
@@ -99,60 +135,77 @@ class AuthManager {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             
+            if (!email || !password) {
+                this.showMessage('Заполните все поля', 'error');
+                return;
+            }
+            
             messageEl.style.display = 'none';
             submitBtn.disabled = true;
             submitBtn.textContent = isLoginMode ? 'Вход...' : 'Регистрация...';
             
+            console.log(`${isLoginMode ? 'Login' : 'Register'} attempt:`, email);
+            
             try {
+                let result;
+                
                 if (isLoginMode) {
-                    await api.login(email, password);
-                    messageEl.textContent = 'Вход выполнен!';
-                    messageEl.className = 'auth-message success';
-                    messageEl.style.display = 'block';
+                    result = await api.login(email, password);
+                    this.showMessage('Вход выполнен!', 'success');
                     
                     setTimeout(() => {
-                        this.hideAuth();
                         this.showApp();
                     }, 1000);
                 } else {
-                    const username = document.getElementById('username').value;
-                    const full_name = document.getElementById('full_name').value;
+                    const username = document.getElementById('username').value || email.split('@')[0];
+                    const full_name = document.getElementById('full_name').value || username;
                     
-                    await api.register(email, password, username, full_name);
-                    messageEl.textContent = 'Регистрация успешна!';
-                    messageEl.className = 'auth-message success';
-                    messageEl.style.display = 'block';
+                    result = await api.register(email, password, username, full_name);
+                    this.showMessage('Регистрация успешна!', 'success');
                     
                     setTimeout(() => {
-                        this.hideAuth();
                         this.showApp();
                     }, 1000);
                 }
+                
+                console.log('Auth result:', result);
             } catch (error) {
-                messageEl.textContent = `Ошибка: ${error.message}`;
-                messageEl.className = 'auth-message error';
-                messageEl.style.display = 'block';
+                console.error('Auth error:', error);
+                this.showMessage(`Ошибка: ${error.message}`, 'error');
                 submitBtn.disabled = false;
                 submitBtn.textContent = isLoginMode ? 'Войти' : 'Зарегистрироваться';
             }
         });
     }
 
-    hideAuth() {
-        const container = document.getElementById('auth-container');
-        container.innerHTML = '';
+    showMessage(text, type) {
+        const messageEl = document.getElementById('authMessage');
+        messageEl.textContent = text;
+        messageEl.className = `auth-message ${type}`;
+        messageEl.style.display = 'block';
     }
 
     showApp() {
+        console.log('🚀 Showing app...');
+        
+        // Hide auth screen
+        const container = document.getElementById('auth-container');
+        container.innerHTML = '';
+        
+        // Show main app
         document.getElementById('main-app').style.display = 'grid';
+        
         // Initialize messenger
         if (window.initMessenger) {
-            window.initMessenger();
+            setTimeout(() => {
+                window.initMessenger();
+            }, 500);
         }
     }
 }
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('📄 DOM loaded');
     window.authManager = new AuthManager();
 });
