@@ -1,16 +1,14 @@
 // api.js - Клиент для работы с API
 const API_BASE_URL = 'lvkosp-pt2-production.up.railway.app';
 
-class LVKOSPApi {
+class ApiClient {
     constructor() {
         this.token = localStorage.getItem('lvkosp_token');
         this.user = JSON.parse(localStorage.getItem('lvkosp_user') || 'null');
-        this.profile = JSON.parse(localStorage.getItem('lvkosp_profile') || 'null');
     }
 
     async request(endpoint, options = {}) {
-        const url = `${API_BASE_URL}${endpoint}`;
-        console.log(`API Request: ${options.method || 'GET'} ${url}`);
+        const url = API_BASE_URL + endpoint;
         
         const headers = {
             'Content-Type': 'application/json',
@@ -21,62 +19,36 @@ class LVKOSPApi {
             headers['Authorization'] = `Bearer ${this.token}`;
         }
 
-        const config = {
-            ...options,
-            headers
-        };
-
         try {
-            const response = await fetch(url, config);
-            console.log(`API Response: ${response.status} ${response.statusText}`);
-            
-            // Если ответ пустой (204 No Content)
-            if (response.status === 204) {
-                return { success: true };
-            }
-            
-            const text = await response.text();
-            let data;
-            
-            try {
-                data = text ? JSON.parse(text) : {};
-            } catch (e) {
-                console.error('Failed to parse JSON:', text);
-                throw new Error('Invalid JSON response');
-            }
+            console.log(`📡 ${options.method || 'GET'} ${url}`);
+            const response = await fetch(url, { ...options, headers });
             
             if (!response.ok) {
-                throw new Error(data.error || data.message || `HTTP ${response.status}`);
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.error || `HTTP ${response.status}`);
             }
             
-            return data;
+            return response.json();
         } catch (error) {
             console.error('API Error:', error);
             throw error;
         }
     }
 
-    // Проверка доступности API
-    async checkHealth() {
-        try {
-            const response = await fetch(`${API_BASE_URL}/health`);
-            return response.ok;
-        } catch {
-            return false;
-        }
-    }
-
-    // Аутентификация
-    async register(email, password, username, full_name, bio = '') {
+    // Auth
+    async register(email, password, username, full_name) {
         const data = await this.request('/auth/register', {
             method: 'POST',
-            body: JSON.stringify({ email, password, username, full_name, bio })
+            body: JSON.stringify({ email, password, username, full_name })
         });
-
+        
         if (data.access_token) {
-            this.setAuthData(data.access_token, data.user, data.profile);
+            this.token = data.access_token;
+            this.user = data.user;
+            localStorage.setItem('lvkosp_token', this.token);
+            localStorage.setItem('lvkosp_user', JSON.stringify(this.user));
         }
-
+        
         return data;
     }
 
@@ -85,34 +57,32 @@ class LVKOSPApi {
             method: 'POST',
             body: JSON.stringify({ email, password })
         });
-
+        
         if (data.access_token) {
-            this.setAuthData(data.access_token, data.user, data.profile);
+            this.token = data.access_token;
+            this.user = data.user;
+            localStorage.setItem('lvkosp_token', this.token);
+            localStorage.setItem('lvkosp_user', JSON.stringify(this.user));
         }
-
+        
         return data;
     }
 
     async getCurrentUser() {
-        try {
-            const data = await this.request('/auth/me');
-            this.profile = data;
-            localStorage.setItem('lvkosp_profile', JSON.stringify(data));
-            return data;
-        } catch (error) {
-            this.clearAuthData();
-            throw error;
-        }
+        const data = await this.request('/auth/me');
+        this.user = data;
+        localStorage.setItem('lvkosp_user', JSON.stringify(data));
+        return data;
     }
 
-    // Чаты (самое важное для теста)
+    // Chats
     async getChats() {
         try {
             const data = await this.request('/chats');
-            console.log('Chats data:', data);
-            return data || [];
+            console.log('Chats loaded:', data);
+            return Array.isArray(data) ? data : [];
         } catch (error) {
-            console.error('Get chats error:', error);
+            console.error('Failed to load chats:', error);
             return [];
         }
     }
@@ -120,9 +90,9 @@ class LVKOSPApi {
     async getMessages(chatId) {
         try {
             const data = await this.request(`/chats/${chatId}/messages?limit=50`);
-            return data || [];
+            return Array.isArray(data) ? data : [];
         } catch (error) {
-            console.error('Get messages error:', error);
+            console.error('Failed to load messages:', error);
             return [];
         }
     }
@@ -134,25 +104,21 @@ class LVKOSPApi {
         });
     }
 
-    // Вспомогательные методы
-    setAuthData(token, user, profile) {
-        this.token = token;
-        this.user = user;
-        this.profile = profile;
-        
-        localStorage.setItem('lvkosp_token', token);
-        localStorage.setItem('lvkosp_user', JSON.stringify(user));
-        localStorage.setItem('lvkosp_profile', JSON.stringify(profile));
+    // Friends
+    async searchUsers(query) {
+        return this.request(`/users/search?q=${encodeURIComponent(query)}`);
     }
 
-    clearAuthData() {
+    async getFriends() {
+        return this.request('/friends');
+    }
+
+    // Logout
+    logout() {
         this.token = null;
         this.user = null;
-        this.profile = null;
-        
         localStorage.removeItem('lvkosp_token');
         localStorage.removeItem('lvkosp_user');
-        localStorage.removeItem('lvkosp_profile');
     }
 
     isAuthenticated() {
@@ -160,5 +126,5 @@ class LVKOSPApi {
     }
 }
 
-// Создаем глобальный экземпляр
-window.api = new LVKOSPApi();
+// Create global instance
+window.api = new ApiClient();
