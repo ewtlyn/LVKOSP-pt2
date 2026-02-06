@@ -6,7 +6,7 @@
     <title>LVKOSP Messenger</title>
     <link rel="stylesheet" href="./style.css">
     <style>
-        /* Временные стили для аутентификации */
+        /* Стили для аутентификации */
         .auth-screen {
             position: fixed;
             top: 0;
@@ -62,6 +62,10 @@
             margin-top: 10px;
         }
         
+        .auth-button:hover {
+            background: #2a2929;
+        }
+        
         .auth-switch {
             text-align: center;
             margin-top: 20px;
@@ -74,7 +78,7 @@
             text-decoration: none;
         }
         
-        .auth-message {
+        .message {
             padding: 12px;
             border-radius: 8px;
             margin-top: 20px;
@@ -82,13 +86,13 @@
             display: none;
         }
         
-        .auth-message.success {
+        .message.success {
             background: rgba(34, 197, 94, 0.1);
             color: #22c55e;
             display: block;
         }
         
-        .auth-message.error {
+        .message.error {
             background: rgba(239, 68, 68, 0.1);
             color: #ef4444;
             display: block;
@@ -96,12 +100,35 @@
     </style>
 </head>
 <body>
-    <!-- Аутентификация появится здесь -->
-    <div id="auth-container"></div>
+    <!-- Аутентификация -->
+    <div class="auth-screen" id="authScreen">
+        <div class="auth-card">
+            <h2 class="auth-title" id="authTitle">Вход в LVKOSP</h2>
+            
+            <form id="authForm">
+                <input type="email" class="auth-input" id="email" placeholder="Email" required>
+                <input type="password" class="auth-input" id="password" placeholder="Пароль" required>
+                
+                <div id="registerFields" style="display: none;">
+                    <input type="text" class="auth-input" id="username" placeholder="Имя пользователя">
+                    <input type="text" class="auth-input" id="full_name" placeholder="Полное имя (необязательно)">
+                </div>
+                
+                <button type="submit" class="auth-button" id="submitBtn">Войти</button>
+            </form>
+            
+            <div class="auth-switch">
+                <span id="switchText">Нет аккаунта? </span>
+                <a id="switchLink">Зарегистрироваться</a>
+            </div>
+            
+            <div class="message" id="message"></div>
+        </div>
+    </div>
     
-    <!-- Основной интерфейс (скрыт до входа) -->
-    <div class="app" id="main-app" style="display: none;">
-        <!-- Ваш оригинальный HTML код из первого сообщения -->
+    <!-- Основной интерфейс (скрыт) -->
+    <div class="app" id="mainApp" style="display: none;">
+        <!-- Ваш оригинальный HTML код -->
         <aside class="sidebar" aria-label="Sidebar">
             <div class="brand">
                 <div class="brand__title">LVKOSP MESSENGER</div>
@@ -118,71 +145,51 @@
             </div>
 
             <nav class="tabs" aria-label="Navigation">
-                <button class="tab is-active" data-tab="chats" type="button" aria-current="page">
-                    <span class="tab__icon" aria-hidden="true">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                            <path d="M7.5 18.5H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v8.5a3 3 0 0 1-3 3h-5.2l-3.6 2.6a.9.9 0 0 1-1.4-.7v-1.9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-                        </svg>
-                    </span>
+                <button class="tab is-active" data-tab="chats">
+                    <span class="tab__icon" aria-hidden="true">💬</span>
                     <span class="tab__label">Chats</span>
                 </button>
 
-                <button class="tab" data-tab="friends" type="button">
-                    <span class="tab__icon" aria-hidden="true">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                            <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="currentColor" stroke-width="1.6"/>
-                            <path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-                        </svg>
-                    </span>
+                <button class="tab" data-tab="friends">
+                    <span class="tab__icon" aria-hidden="true">👥</span>
                     <span class="tab__label">Friends</span>
                 </button>
 
-                <button class="tab" data-tab="profile" type="button">
-                    <span class="tab__icon" aria-hidden="true">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                            <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="currentColor" stroke-width="1.6"/>
-                            <path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-                            <path d="M19 7h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-                            <path d="M20.5 5.5v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-                        </svg>
-                    </span>
+                <button class="tab" data-tab="profile">
+                    <span class="tab__icon" aria-hidden="true">👤</span>
                     <span class="tab__label">Profile</span>
                 </button>
             </nav>
 
             <div class="sectionTitle">DIRECT MESSAGES</div>
 
-            <div class="dmList" id="dmList" role="listbox" aria-label="Direct Messages">
+            <div class="dmList" id="dmList">
                 <div style="padding: 20px; text-align: center; color: rgba(255,255,255,0.5);">
-                    Загрузка чатов...
+                    Нет чатов
                 </div>
             </div>
 
             <div class="meCard">
-                <div class="meCard__avatar" id="meAvatar" aria-hidden="true"></div>
+                <div class="meCard__avatar" id="meAvatar"></div>
                 <div class="meCard__meta">
-                    <div class="meCard__name" id="meName">Загрузка...</div>
+                    <div class="meCard__name" id="meName">User</div>
                     <div class="meCard__user" id="meUser">@user</div>
                 </div>
-                <button class="iconBtn" id="settingsBtn" type="button" aria-label="Settings">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" stroke="currentColor" stroke-width="1.6"/>
-                        <path d="M19.4 15.3 21 12l-1.6-3.3-3.6.2-2-3-3.8 1.5-3.8-1.5-2 3-3.6-.2L3 12l1.6 3.3 3.6-.2 2 3 3.8-1.5 3.8 1.5 2-3 3.6.2Z"
-                              stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-                    </svg>
+                <button class="iconBtn" id="settingsBtn">
+                    ⚙️
                 </button>
             </div>
         </aside>
 
-        <main class="main" aria-label="Main">
-            <section class="view is-active" id="view-chats" data-view="chats">
+        <main class="main">
+            <section class="view is-active" id="view-chats">
                 <header class="chatHeader">
                     <div class="chatHeader__left">
-                        <div class="chatHeader__avatar" id="activeAvatar" aria-hidden="true"></div>
+                        <div class="chatHeader__avatar" id="activeAvatar"></div>
                         <div class="chatHeader__meta">
                             <div class="chatHeader__name" id="activeName">Выберите чат</div>
                             <div class="chatHeader__status">
-                                <span class="dot" id="activeDot" aria-hidden="true"></span>
+                                <span class="dot" id="activeDot"></span>
                                 <span id="activeStatus"></span>
                             </div>
                         </div>
@@ -193,50 +200,33 @@
                     </div>
                 </header>
 
-                <div class="chatBody" id="chatBody" aria-label="Chat messages">
-                    <div class="blank">
-                        <div class="blank__title">👈 Выберите чат</div>
-                        <div class="blank__text">Начните общение</div>
+                <div class="chatBody" id="chatBody">
+                    <div style="padding: 40px; text-align: center; color: rgba(255,255,255,0.5);">
+                        Выберите чат для начала общения
                     </div>
                 </div>
 
                 <footer class="chatComposer">
-                    <button class="clipBtn" type="button" aria-label="Attach">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                            <path d="M8 12.5 14.9 5.6a3 3 0 0 1 4.2 4.2l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.7-8.7"
-                                  stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
-
-                    <input class="composerInput" id="messageInput" placeholder="Введите сообщение..." autocomplete="off" />
-
-                    <button class="sendBtn" id="sendBtn" type="button" aria-label="Send">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                            <path d="M4 12 21 3l-5.2 18-4.3-7.2L4 12Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-                            <path d="M21 3 11.5 13.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-                        </svg>
-                    </button>
+                    <button class="clipBtn" type="button">📎</button>
+                    <input class="composerInput" id="messageInput" placeholder="Введите сообщение...">
+                    <button class="sendBtn" id="sendBtn">📤</button>
                 </footer>
             </section>
 
-            <section class="view" id="view-friends" data-view="friends">
-                <div class="blank">
-                    <div class="blank__title">Друзья</div>
-                    <div class="blank__text">Раздел в разработке</div>
+            <section class="view" id="view-friends">
+                <div style="padding: 40px; text-align: center; color: rgba(255,255,255,0.5);">
+                    Раздел друзей
                 </div>
             </section>
 
-            <section class="view" id="view-profile" data-view="profile">
-                <div class="blank">
-                    <div class="blank__title">Профиль</div>
-                    <div class="blank__text">Профиль загружается...</div>
+            <section class="view" id="view-profile">
+                <div style="padding: 40px; text-align: center; color: rgba(255,255,255,0.5);">
+                    Профиль пользователя
                 </div>
             </section>
         </main>
     </div>
 
-    <script src="./api.js"></script>
-    <script src="./auth.js"></script>
     <script src="./app.js"></script>
 </body>
 </html>
