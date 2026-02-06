@@ -1,296 +1,423 @@
-/* LVKOSP Messenger (API версия) */
-
-// Замените весь старый код на этот:
-
+// app.js - минимальная рабочая версия
 document.addEventListener('DOMContentLoaded', async () => {
-    // Проверяем аутентификацию
-    if (!window.api || !api.isAuthenticated()) {
-        // Покажем модалку аутентификации
-        await showAuthModal();
+    console.log('App started');
+    
+    // Сначала проверим доступность API
+    const isApiAlive = await api.checkHealth();
+    console.log('API alive:', isApiAlive);
+    
+    if (!isApiAlive) {
+        showError('API сервер недоступен. Попробуйте позже.');
         return;
     }
-
-    // Получаем текущий профиль
+    
+    // Проверяем аутентификацию
+    if (!api.isAuthenticated()) {
+        showAuthScreen();
+        return;
+    }
+    
+    // Проверяем токен
     try {
         await api.getCurrentUser();
-        initApp();
+        initMessenger();
     } catch (error) {
-        console.error('Failed to get user:', error);
-        localStorage.clear();
-        location.reload();
+        console.log('Token invalid, showing auth');
+        showAuthScreen();
     }
 });
 
-async function showAuthModal() {
-    // Создаем простую модалку если auth.js не загружен
-    const modalHTML = `
-        <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:#070707;z-index:9999;display:flex;align-items:center;justify-content:center;">
-            <div style="background:#0E0E0E;padding:40px;border-radius:16px;max-width:400px;width:90%;border:1px solid rgba(255,255,255,0.1);">
-                <h2 style="color:white;margin:0 0 20px 0;">Требуется вход</h2>
-                <p style="color:rgba(255,255,255,0.6);margin-bottom:30px;">Пожалуйста, перезагрузите страницу и войдите в систему.</p>
-                <button onclick="location.reload()" style="background:#232222;color:white;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;">
+function showError(message) {
+    document.body.innerHTML = `
+        <div style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #070707;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: sans-serif;
+        ">
+            <div style="
+                background: #0E0E0E;
+                padding: 30px;
+                border-radius: 12px;
+                border: 1px solid rgba(255,255,255,0.1);
+                max-width: 400px;
+                text-align: center;
+            ">
+                <h2 style="color: #ef4444; margin: 0 0 15px 0;">Ошибка</h2>
+                <p style="color: rgba(255,255,255,0.8); margin: 0 0 20px 0;">${message}</p>
+                <button onclick="location.reload()" style="
+                    background: #232222;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                ">
                     Перезагрузить
                 </button>
             </div>
         </div>
     `;
-    
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
-function initApp() {
-    const els = {
-        tabs: document.querySelectorAll(".tab"),
-        views: document.querySelectorAll(".view"),
-
-        dmList: document.getElementById("dmList"),
-        searchInput: document.getElementById("searchInput"),
-
-        activeAvatar: document.getElementById("activeAvatar"),
-        activeName: document.getElementById("activeName"),
-        activeStatus: document.getElementById("activeStatus"),
-        activeDot: document.getElementById("activeDot"),
-        datePill: document.getElementById("datePill"),
-
-        chatBody: document.getElementById("chatBody"),
-        messageInput: document.getElementById("messageInput"),
-        sendBtn: document.getElementById("sendBtn"),
-
-        profileAvatar: document.getElementById("profileAvatar"),
-        profileName: document.getElementById("profileName"),
-        profileUser: document.getElementById("profileUser"),
-        profileBio: document.getElementById("profileBio"),
-        profileFollowers: document.getElementById("profileFollowers"),
-
-        postAvatar: document.getElementById("postAvatar"),
-        postName: document.getElementById("postName"),
-        postUser: document.getElementById("postUser"),
-        postText: document.getElementById("postText"),
-        postDate: document.getElementById("postDate"),
-
-        friendBtn: document.getElementById("friendBtn"),
-        removeBtn: document.getElementById("removeBtn"),
-    };
-
-    // State
-    const state = {
-        activeTab: "chats",
-        chats: [],
-        activeChatId: null,
-        messagesByChat: {}
-    };
-
-    // ---- Render DM list ----
-    async function renderDmList(filter = "") {
+function showAuthScreen() {
+    document.body.innerHTML = `
+        <div style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(1200px 800px at 70% 20%, rgba(255,255,255,.06), transparent 60%),
+                      radial-gradient(900px 700px at 10% 80%, rgba(255,255,255,.05), transparent 55%),
+                      #070707;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: sans-serif;
+        ">
+            <div style="
+                background: #0E0E0E;
+                padding: 40px;
+                border-radius: 16px;
+                border: 1px solid rgba(255,255,255,0.1);
+                width: 90%;
+                max-width: 400px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            ">
+                <h1 style="color: white; text-align: center; margin: 0 0 30px 0;">LVKOSP Messenger</h1>
+                
+                <form id="authForm" style="display: flex; flex-direction: column; gap: 20px;">
+                    <div>
+                        <input type="email" id="email" placeholder="Email" required style="
+                            width: 100%;
+                            padding: 14px;
+                            background: rgba(255,255,255,0.03);
+                            border: 1px solid rgba(255,255,255,0.1);
+                            border-radius: 10px;
+                            color: white;
+                            font-size: 16px;
+                            box-sizing: border-box;
+                        ">
+                    </div>
+                    
+                    <div>
+                        <input type="password" id="password" placeholder="Пароль" required style="
+                            width: 100%;
+                            padding: 14px;
+                            background: rgba(255,255,255,0.03);
+                            border: 1px solid rgba(255,255,255,0.1);
+                            border-radius: 10px;
+                            color: white;
+                            font-size: 16px;
+                            box-sizing: border-box;
+                        ">
+                    </div>
+                    
+                    <button type="submit" style="
+                        width: 100%;
+                        padding: 14px;
+                        background: #232222;
+                        border: none;
+                        border-radius: 10px;
+                        color: white;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: background 0.2s;
+                    " onmouseover="this.style.background='#2a2929'" onmouseout="this.style.background='#232222'">
+                        Войти
+                    </button>
+                    
+                    <div style="text-align: center; margin-top: 10px;">
+                        <a href="#" id="showRegister" style="
+                            color: rgba(255,255,255,0.6);
+                            text-decoration: none;
+                            font-size: 14px;
+                        ">Нет аккаунта? Зарегистрироваться</a>
+                    </div>
+                </form>
+                
+                <div id="registerForm" style="display: none; flex-direction: column; gap: 15px; margin-top: 20px;">
+                    <input type="text" id="username" placeholder="Имя пользователя" style="
+                        width: 100%;
+                        padding: 14px;
+                        background: rgba(255,255,255,0.03);
+                        border: 1px solid rgba(255,255,255,0.1);
+                        border-radius: 10px;
+                        color: white;
+                        font-size: 16px;
+                        box-sizing: border-box;
+                    ">
+                    
+                    <input type="text" id="full_name" placeholder="Полное имя (необязательно)" style="
+                        width: 100%;
+                        padding: 14px;
+                        background: rgba(255,255,255,0.03);
+                        border: 1px solid rgba(255,255,255,0.1);
+                        border-radius: 10px;
+                        color: white;
+                        font-size: 16px;
+                        box-sizing: border-box;
+                    ">
+                    
+                    <button id="registerBtn" style="
+                        width: 100%;
+                        padding: 14px;
+                        background: #232222;
+                        border: none;
+                        border-radius: 10px;
+                        color: white;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: background 0.2s;
+                    " onmouseover="this.style.background='#2a2929'" onmouseout="this.style.background='#232222'">
+                        Зарегистрироваться
+                    </button>
+                    
+                    <div style="text-align: center;">
+                        <a href="#" id="showLogin" style="
+                            color: rgba(255,255,255,0.6);
+                            text-decoration: none;
+                            font-size: 14px;
+                        ">Уже есть аккаунт? Войти</a>
+                    </div>
+                </div>
+                
+                <div id="message" style="
+                    margin-top: 20px;
+                    padding: 12px;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    display: none;
+                "></div>
+            </div>
+        </div>
+    `;
+    
+    // Обработчики событий
+    document.getElementById('authForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const message = document.getElementById('message');
+        
+        message.style.display = 'none';
+        
         try {
-            const chats = await api.getChats();
-            state.chats = chats;
+            const data = await api.login(email, password);
+            message.textContent = 'Вход успешен!';
+            message.style.background = 'rgba(34, 197, 94, 0.1)';
+            message.style.color = '#22c55e';
+            message.style.display = 'block';
             
-            const q = filter.trim().toLowerCase();
-            els.dmList.innerHTML = "";
-
-            const filteredChats = chats.filter(c => {
-                if (!q) return true;
-                return (c.name.toLowerCase().includes(q) || 
-                       (c.snippet || "").toLowerCase().includes(q));
-            });
-
-            filteredChats.forEach(chat => {
-                const item = document.createElement('div');
-                item.className = `dmItem ${chat.id === state.activeChatId ? "is-active" : ""}`;
-                item.dataset.chatId = chat.id;
-
-                const avatar = document.createElement('div');
-                avatar.className = "dmAvatar";
-                if (chat.avatar_url) {
-                    avatar.style.setProperty("--img", `url("${chat.avatar_url}")`);
-                }
-                item.appendChild(avatar);
-
-                const meta = document.createElement('div');
-                meta.className = "dmMeta";
-                meta.innerHTML = `
-                    <div class="dmName">${escapeHtml(chat.name)}</div>
-                    <div class="dmSnippet">${escapeHtml(chat.snippet || "")}</div>
-                `;
-                item.appendChild(meta);
-
-                const right = document.createElement('div');
-                right.className = "dmRight";
-                right.innerHTML = `
-                    <div class="dmTime">${escapeHtml(chat.time || "")}</div>
-                    <div class="dmDot"></div>
-                `;
-                item.appendChild(right);
-
-                item.addEventListener("click", async () => {
-                    state.activeChatId = chat.id;
-                    await renderActiveChat();
-                    setTab("chats");
-                });
-
-                els.dmList.appendChild(item);
-            });
+            setTimeout(() => location.reload(), 1000);
         } catch (error) {
-            console.error('Error loading chats:', error);
-            els.dmList.innerHTML = `<div class="blank" style="padding:20px;color:rgba(255,255,255,0.5);">
-                Ошибка загрузки чатов
-            </div>`;
+            message.textContent = 'Ошибка: ' + error.message;
+            message.style.background = 'rgba(239, 68, 68, 0.1)';
+            message.style.color = '#ef4444';
+            message.style.display = 'block';
         }
-    }
-
-    // ---- Active chat ----
-    function getActiveChat() {
-        return state.chats.find(c => c.id === state.activeChatId) || state.chats[0] || null;
-    }
-
-    async function renderActiveChat() {
-        const chat = getActiveChat();
-        if (!chat) {
-            // Показываем заглушку если нет активного чата
-            els.activeName.textContent = "Выберите чат";
-            els.activeStatus.textContent = "";
-            els.chatBody.innerHTML = '<div class="blank"><div class="blank__title">Выберите чат</div></div>';
+    });
+    
+    document.getElementById('showRegister').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('authForm').style.display = 'none';
+        document.getElementById('registerForm').style.display = 'flex';
+    });
+    
+    document.getElementById('showLogin').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('authForm').style.display = 'flex';
+    });
+    
+    document.getElementById('registerBtn').addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const username = document.getElementById('username').value;
+        const full_name = document.getElementById('full_name').value;
+        const message = document.getElementById('message');
+        
+        if (!username) {
+            message.textContent = 'Введите имя пользователя';
+            message.style.background = 'rgba(239, 68, 68, 0.1)';
+            message.style.color = '#ef4444';
+            message.style.display = 'block';
             return;
         }
-
-        // Header
-        els.activeName.textContent = chat.name;
-        els.activeStatus.textContent = "Online"; // TODO: real status
-        setAvatarVar(els.activeAvatar, chat.avatar_url);
-
-        // Date
-        els.datePill.textContent = getCurrentTime();
-
-        // Messages
+        
+        message.style.display = 'none';
+        
         try {
-            const messages = await api.getMessages(chat.id);
-            renderMessages(messages);
+            const data = await api.register(email, password, username, full_name, '');
+            message.textContent = 'Регистрация успешна!';
+            message.style.background = 'rgba(34, 197, 94, 0.1)';
+            message.style.color = '#22c55e';
+            message.style.display = 'block';
             
-            // Update profile view
-            renderProfileFromChat(chat);
+            setTimeout(() => location.reload(), 1500);
+        } catch (error) {
+            message.textContent = 'Ошибка: ' + error.message;
+            message.style.background = 'rgba(239, 68, 68, 0.1)';
+            message.style.color = '#ef4444';
+            message.style.display = 'block';
+        }
+    });
+}
+
+async function initMessenger() {
+    console.log('Initializing messenger...');
+    
+    // Загружаем чаты
+    const chats = await api.getChats();
+    console.log('Loaded chats:', chats);
+    
+    // Показываем оригинальный интерфейс
+    document.body.innerHTML = `
+        <div class="app" id="app">
+            <!-- Ваш оригинальный HTML код из index.html -->
+            ${document.querySelector('.app').innerHTML}
+        </div>
+    `;
+    
+    // Инициализируем мессенджер
+    setupMessenger(chats);
+}
+
+function setupMessenger(chats) {
+    const dmList = document.getElementById('dmList');
+    const chatBody = document.getElementById('chatBody');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    
+    let activeChatId = chats[0]?.id;
+    
+    // Заполняем список чатов
+    function renderChats() {
+        dmList.innerHTML = '';
+        
+        if (chats.length === 0) {
+            dmList.innerHTML = '<div style="padding: 20px; color: rgba(255,255,255,0.5); text-align: center;">Нет чатов</div>';
+            return;
+        }
+        
+        chats.forEach(chat => {
+            const item = document.createElement('div');
+            item.className = `dmItem ${chat.id === activeChatId ? 'is-active' : ''}`;
+            item.innerHTML = `
+                <div class="dmAvatar" style="${chat.avatar_url ? `--img: url('${chat.avatar_url}')` : ''}"></div>
+                <div class="dmMeta">
+                    <div class="dmName">${escapeHtml(chat.name)}</div>
+                    <div class="dmSnippet">${escapeHtml(chat.snippet || 'Нет сообщений')}</div>
+                </div>
+                <div class="dmRight">
+                    <div class="dmTime">${escapeHtml(chat.time || '')}</div>
+                    <div class="dmDot"></div>
+                </div>
+            `;
+            
+            item.addEventListener('click', async () => {
+                activeChatId = chat.id;
+                renderChats();
+                await loadChatMessages(chat.id);
+            });
+            
+            dmList.appendChild(item);
+        });
+    }
+    
+    // Загружаем сообщения чата
+    async function loadChatMessages(chatId) {
+        chatBody.innerHTML = '<div style="padding: 20px; color: rgba(255,255,255,0.5); text-align: center;">Загрузка...</div>';
+        
+        try {
+            const messages = await api.getMessages(chatId);
+            renderMessages(messages);
         } catch (error) {
             console.error('Error loading messages:', error);
-            els.chatBody.innerHTML = '<div class="blank"><div class="blank__title">Ошибка загрузки сообщений</div></div>';
+            chatBody.innerHTML = '<div style="padding: 20px; color: #ef4444; text-align: center;">Ошибка загрузки сообщений</div>';
         }
     }
-
+    
+    // Отображаем сообщения
     function renderMessages(messages) {
-        els.chatBody.innerHTML = "";
+        chatBody.innerHTML = '';
+        
+        if (messages.length === 0) {
+            chatBody.innerHTML = '<div style="padding: 20px; color: rgba(255,255,255,0.5); text-align: center;">Нет сообщений</div>';
+            return;
+        }
+        
         messages.forEach(msg => {
-            els.chatBody.appendChild(makeMessageRow(msg.text, msg.who));
+            const row = document.createElement('div');
+            row.className = `msgRow ${msg.who === 'me' ? 'me' : 'them'}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'msgBubble';
+            bubble.textContent = msg.text;
+            
+            row.appendChild(bubble);
+            chatBody.appendChild(row);
         });
         
-        // Auto-scroll
-        requestAnimationFrame(() => {
-            els.chatBody.scrollTop = els.chatBody.scrollHeight;
-        });
+        // Скроллим вниз
+        setTimeout(() => {
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }, 100);
     }
-
-    // ---- Send message ----
+    
+    // Отправка сообщения
     async function sendMessage() {
-        const chat = getActiveChat();
-        if (!chat) return;
-
-        const text = (els.messageInput.value || "").trim();
+        if (!activeChatId) {
+            alert('Выберите чат');
+            return;
+        }
+        
+        const text = messageInput.value.trim();
         if (!text) return;
-
+        
         try {
-            await api.sendMessage(chat.id, text);
-            els.messageInput.value = "";
+            await api.sendMessage(activeChatId, text);
+            messageInput.value = '';
             
-            // Reload messages
-            const messages = await api.getMessages(chat.id);
-            renderMessages(messages);
+            // Перезагружаем сообщения
+            await loadChatMessages(activeChatId);
             
-            // Update chat list
-            await renderDmList(els.searchInput.value);
+            // Обновляем список чатов
+            chats = await api.getChats();
+            renderChats();
         } catch (error) {
-            console.error('Error sending message:', error);
-            alert('Ошибка отправки сообщения');
+            alert('Ошибка отправки: ' + error.message);
         }
     }
-
-    els.sendBtn.addEventListener("click", sendMessage);
-    els.messageInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") sendMessage();
+    
+    // Назначаем обработчики
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
     });
-
-    // ---- Profile ----
-    function renderProfileFromChat(chat) {
-        els.profileName.textContent = chat.name;
-        els.profileUser.textContent = chat.username || "@username";
-        els.profileBio.textContent = chat.profile?.bio || "";
-        
-        setAvatarVar(els.profileAvatar, chat.avatar_url);
-        setAvatarVar(els.postAvatar, chat.avatar_url);
-        
-        els.postName.textContent = chat.name;
-        els.postUser.textContent = chat.username || "@username";
+    
+    // Инициализируем
+    renderChats();
+    if (activeChatId) {
+        loadChatMessages(activeChatId);
     }
+}
 
-    // ---- Tabs ----
-    function setTab(tab) {
-        state.activeTab = tab;
-        els.tabs.forEach(b => b.classList.toggle("is-active", b.dataset.tab === tab));
-        els.views.forEach(v => v.classList.toggle("is-active", v.dataset.view === tab));
-    }
-
-    els.tabs.forEach(btn => {
-        btn.addEventListener("click", () => setTab(btn.dataset.tab));
-    });
-
-    // ---- Search ----
-    els.searchInput.addEventListener("input", (e) => {
-        renderDmList(e.target.value);
-    });
-
-    // ---- Utils ----
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function setAvatarVar(el, url) {
-        if (url) el.style.setProperty("--img", `url("${url}")`);
-        else el.style.removeProperty("--img");
-    }
-
-    function makeMessageRow(text, who = "me") {
-        const row = document.createElement('div');
-        row.className = `msgRow ${who === "me" ? "me" : "them"}`;
-        const bubble = document.createElement('div');
-        bubble.className = "msgBubble";
-        bubble.textContent = text;
-        row.appendChild(bubble);
-        return row;
-    }
-
-    function getCurrentTime() {
-        const d = new Date();
-        const hh = String(d.getHours()).padStart(2, "0");
-        const mm = String(d.getMinutes()).padStart(2, "0");
-        return `Сегодня, ${hh}:${mm}`;
-    }
-
-    // ---- Init ----
-    async function initialize() {
-        try {
-            await renderDmList();
-            
-            // Если есть чаты, выбираем первый
-            if (state.chats.length > 0) {
-                state.activeChatId = state.chats[0].id;
-                await renderActiveChat();
-            }
-            
-            setTab(state.activeTab);
-        } catch (error) {
-            console.error('Initialization error:', error);
-        }
-    }
-
-    // Запускаем приложение
-    initialize();
-};
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}

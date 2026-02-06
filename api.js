@@ -10,6 +10,8 @@ class LVKOSPApi {
 
     async request(endpoint, options = {}) {
         const url = `${API_BASE_URL}${endpoint}`;
+        console.log(`API Request: ${options.method || 'GET'} ${url}`);
+        
         const headers = {
             'Content-Type': 'application/json',
             ...options.headers
@@ -26,16 +28,41 @@ class LVKOSPApi {
 
         try {
             const response = await fetch(url, config);
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || `HTTP ${response.status}`);
+            console.log(`API Response: ${response.status} ${response.statusText}`);
+            
+            // Если ответ пустой (204 No Content)
+            if (response.status === 204) {
+                return { success: true };
             }
-
+            
+            const text = await response.text();
+            let data;
+            
+            try {
+                data = text ? JSON.parse(text) : {};
+            } catch (e) {
+                console.error('Failed to parse JSON:', text);
+                throw new Error('Invalid JSON response');
+            }
+            
+            if (!response.ok) {
+                throw new Error(data.error || data.message || `HTTP ${response.status}`);
+            }
+            
             return data;
         } catch (error) {
             console.error('API Error:', error);
             throw error;
+        }
+    }
+
+    // Проверка доступности API
+    async checkHealth() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/health`);
+            return response.ok;
+        } catch {
+            return false;
         }
     }
 
@@ -66,14 +93,6 @@ class LVKOSPApi {
         return data;
     }
 
-    async logout() {
-        try {
-            await this.request('/auth/logout', { method: 'POST' });
-        } finally {
-            this.clearAuthData();
-        }
-    }
-
     async getCurrentUser() {
         try {
             const data = await this.request('/auth/me');
@@ -86,68 +105,26 @@ class LVKOSPApi {
         }
     }
 
-    // Профиль
-    async updateProfile(profileData) {
-        const data = await this.request('/profile', {
-            method: 'PUT',
-            body: JSON.stringify(profileData)
-        });
-        
-        if (data.profile) {
-            this.profile = data.profile;
-            localStorage.setItem('lvkosp_profile', JSON.stringify(data.profile));
-        }
-        
-        return data;
-    }
-
-    // Друзья
-    async searchUsers(query) {
-        return this.request(`/users/search?q=${encodeURIComponent(query)}`);
-    }
-
-    async getFriends() {
-        return this.request('/friends');
-    }
-
-    async getFriendRequests() {
-        return this.request('/friends/requests');
-    }
-
-    async sendFriendRequest(friendId) {
-        return this.request('/friends/request', {
-            method: 'POST',
-            body: JSON.stringify({ friend_id: friendId })
-        });
-    }
-
-    async acceptFriendRequest(friendshipId) {
-        return this.request('/friends/accept', {
-            method: 'POST',
-            body: JSON.stringify({ friendship_id: friendshipId })
-        });
-    }
-
-    async removeFriend(friendshipId) {
-        return this.request(`/friends/${friendshipId}`, {
-            method: 'DELETE'
-        });
-    }
-
-    // Чаты
+    // Чаты (самое важное для теста)
     async getChats() {
-        return this.request('/chats');
+        try {
+            const data = await this.request('/chats');
+            console.log('Chats data:', data);
+            return data || [];
+        } catch (error) {
+            console.error('Get chats error:', error);
+            return [];
+        }
     }
 
-    async createOrGetChat(friendId) {
-        return this.request('/chats', {
-            method: 'POST',
-            body: JSON.stringify({ friend_id: friendId })
-        });
-    }
-
-    async getMessages(chatId, limit = 50) {
-        return this.request(`/chats/${chatId}/messages?limit=${limit}`);
+    async getMessages(chatId) {
+        try {
+            const data = await this.request(`/chats/${chatId}/messages?limit=50`);
+            return data || [];
+        } catch (error) {
+            console.error('Get messages error:', error);
+            return [];
+        }
     }
 
     async sendMessage(chatId, content) {
@@ -183,5 +160,5 @@ class LVKOSPApi {
     }
 }
 
-// Создаем глобальный экземпляр API
+// Создаем глобальный экземпляр
 window.api = new LVKOSPApi();
