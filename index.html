@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LVKOSP Messenger</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar" aria-label="Sidebar">
+      <div class="brand">
+        <div class="brand__title">LVKOSP MESSENGER</div>
+      </div>
+
+      <div class="search">
+        <div class="search__icon" aria-hidden="true">
+          <!-- magnifier -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M10.5 18.5a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <input id="searchInput" class="search__input" type="search" placeholder="Search..." autocomplete="off" />
+      </div>
+
+      <nav class="tabs" aria-label="Navigation">
+        <button class="tab is-active" data-tab="chats" type="button" aria-current="page">
+          <span class="tab__icon" aria-hidden="true">
+            <!-- chat -->
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <path d="M7.5 18.5H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v8.5a3 3 0 0 1-3 3h-5.2l-3.6 2.6a.9.9 0 0 1-1.4-.7v-1.9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="tab__label">Chats</span>
+        </button>
+
+        <button class="tab" data-tab="friends" type="button">
+          <span class="tab__icon" aria-hidden="true">
+            <!-- user -->
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="tab__label">Friends</span>
+        </button>
+
+        <button class="tab" data-tab="profile" type="button">
+          <span class="tab__icon" aria-hidden="true">
+            <!-- profile -->
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M19 7h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M20.5 5.5v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="tab__label">Profile</span>
+        </button>
+      </nav>
+
+      <div class="sectionTitle">DIRECT MESSAGES</div>
+
+      <div class="dmList" id="dmList" role="listbox" aria-label="Direct Messages"></div>
+
+      <div class="meCard">
+        <div class="meCard__avatar" id="meAvatar" aria-hidden="true"></div>
+        <div class="meCard__meta">
+          <div class="meCard__name" id="meName">Seigneur</div>
+          <div class="meCard__user" id="meUser">@lumrot</div>
+        </div>
+        <button class="iconBtn" id="settingsBtn" type="button" aria-label="Settings">
+          <!-- gear -->
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M19.4 15.3 21 12l-1.6-3.3-3.6.2-2-3-3.8 1.5-3.8-1.5-2 3-3.6-.2L3 12l1.6 3.3 3.6-.2 2 3 3.8-1.5 3.8 1.5 2-3 3.6.2Z"
+                  stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main" aria-label="Main">
+      <!-- CHATS VIEW -->
+      <section class="view is-active" id="view-chats" data-view="chats">
+        <header class="chatHeader">
+          <div class="chatHeader__left">
+            <div class="chatHeader__avatar" id="activeAvatar" aria-hidden="true"></div>
+            <div class="chatHeader__meta">
+              <div class="chatHeader__name" id="activeName">Luca moretti</div>
+              <div class="chatHeader__status">
+                <span class="dot is-online" id="activeDot" aria-hidden="true"></span>
+                <span id="activeStatus">Online</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chatHeader__center">
+            <div class="pill" id="datePill">Today, 20:34</div>
+          </div>
+        </header>
+
+        <div class="chatBody" id="chatBody" aria-label="Chat messages">
+          <!-- messages -->
+        </div>
+
+        <footer class="chatComposer">
+          <button class="clipBtn" type="button" aria-label="Attach">
+            <!-- paperclip -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M8 12.5 14.9 5.6a3 3 0 0 1 4.2 4.2l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.7-8.7"
+                    stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+
+          <input class="composerInput" id="messageInput" placeholder="Сообщение..." autocomplete="off" />
+
+          <button class="sendBtn" id="sendBtn" type="button" aria-label="Send">
+            <!-- send -->
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <path d="M4 12 21 3l-5.2 18-4.3-7.2L4 12Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              <path d="M21 3 11.5 13.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </footer>
+      </section>
+
+      <!-- FRIENDS VIEW (минимально, чтобы логика была цельной) -->
+      <section class="view" id="view-friends" data-view="friends">
+        <div class="blank">
+          <div class="blank__title">Friends</div>
+          <div class="blank__text">Экран друзей готов по структуре. Можно расширить: поиск, заявки, список и т.д.</div>
+        </div>
+      </section>
+
+      <!-- PROFILE VIEW (как на 2-м скрине) -->
+      <section class="view" id="view-profile" data-view="profile">
+        <div class="profileTop">
+          <div class="profileTop__left">
+            <div class="profileAvatar" id="profileAvatar" aria-hidden="true"></div>
+            <div class="profileMeta">
+              <div class="profileName" id="profileName">Luca moretti</div>
+              <div class="profileUser" id="profileUser">@someperson</div>
+              <div class="profileBio" id="profileBio">LOST IN THE ECHO</div>
+              <div class="profileFollowers" id="profileFollowers">50k followers</div>
+            </div>
+          </div>
+
+          <div class="profileTop__actions">
+            <button class="btn" type="button" id="friendBtn">Ваш друг</button>
+            <button class="btn is-outline" type="button" id="removeBtn">Удалить из друзей</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="postCard">
+          <div class="postCard__head">
+            <div class="postCard__avatar" id="postAvatar" aria-hidden="true"></div>
+            <div class="postCard__who">
+              <div class="postCard__name" id="postName">Luca moretti</div>
+              <div class="postCard__user" id="postUser">@someperson</div>
+            </div>
+            <button class="iconBtn" type="button" aria-label="More">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M6 12h.01M12 12h.01M18 12h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="postCard__text" id="postText">Who i am?</div>
+
+          <div class="postCard__foot">
+            <div class="postStats">
+              <span class="stat">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 21s-7-4.4-9.3-9A5.7 5.7 0 0 1 12 6a5.7 5.7 0 0 1 9.3 6c-2.3 4.6-9.3 9-9.3 9Z"
+                        stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                </svg>
+                <span id="likesCount">5k</span>
+              </span>
+              <span class="stat">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"
+                        stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                </svg>
+                <span id="commentsCount">10k</span>
+              </span>
+            </div>
+
+            <div class="postDate" id="postDate">04.02.26</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
